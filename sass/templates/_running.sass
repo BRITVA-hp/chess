@@ -1,0 +1,30 @@
+.running
+  padding: 18px 0
+  background: #f54932
+  margin-bottom: 107px
+  &__window
+    overflow: hidden
+    width: 100%
+  &__field
+    display: flex
+    width: min-content
+  &__card
+    font-family: 'Merriweather', sans-serif
+    font-weight: 400
+    font-size: 22px
+    line-height: 110%
+    text-transform: uppercase
+    color: #fff
+    white-space: nowrap
+    position: relative
+    padding: 0 15px
+    &::after
+      content: ''
+      position: absolute
+      width: 6px
+      height: 6px
+      border-radius: 50%
+      background: #fff
+      top: 50%
+      right: -3px
+      transform: translateY(-50%)

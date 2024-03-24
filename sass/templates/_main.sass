@@ -1,0 +1,55 @@
+.main
+  padding: 124px 20px 130px
+  background: #e9ded4
+  overflow: hidden
+  position: relative
+  &__container
+    position: relative
+    z-index: 3
+  &__box
+    width: 100%
+    max-width: 542px
+  &__button-group
+    display: flex
+    align-items: center
+    justify-content: space-between
+  &__subtitle
+    font-weight: 400
+    font-size: 18px
+    line-height: 130%
+    text-align: center
+    margin-bottom: 40px
+    br
+      display: none
+  &__title
+    font-family: 'Merriweather', sans-serif
+    font-weight: 400
+    font-size: 60px
+    line-height: 110%
+    text-transform: uppercase
+    margin-bottom: 24px
+    &__span
+      display: inline-block
+      width: 100%
+      &--1
+        text-align: center
+      &--2
+        text-align: right
+  &__bg
+    position: absolute
+    z-index: 1
+    mix-blend-mode: color-burn
+    object-fit: cover
+    bottom: 0
+    left: 50%
+    top: 50%
+    transform: translate(-50%, -50%)
+    max-width: none
+  &__img
+    position: absolute
+    z-index: 2
+    bottom: -50px
+    left: -120px
+    display: flex
+    img
+      max-width: none
