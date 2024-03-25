@@ -30,23 +30,40 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   })
 
+  function animate({timing, draw, duration, elem, currentPosition, endPosition, inEnd}) {
 
-  // class Slider {
-  //   constructor(settings) {
-  //     this.window = document.querySelector(settings.windowSelector)
-  //     this.field = document.querySelector(settings.fieldSelector)
-  //     this.cards = document.querySelectorAll(settings.cardSelector)
-  //     this.arrowPrev = document.querySelector(settings.buttonPrevSelector)
-  //     this.arrowNext = document.querySelector(settings.buttonNextSelector)
-  //     this.progress = document.querySelector(settings.progressSelector)
-  //     this.dotsWrap = document.querySelector(settings.dotsWrapSelector)
-  //   }
-  //
-  //   resize() {
-  //
-  //   }
-  //
-  // }
+    let start = performance.now();
+
+    requestAnimationFrame(function animate(time) {
+      // timeFraction изменяется от 0 до 1
+      let timeFraction = (time - start) / duration;
+      if (timeFraction > 1) timeFraction = 1;
+
+      // вычисление текущего состояния анимации
+      let progress = timing(timeFraction);
+
+      draw(elem, progress, currentPosition, endPosition); // отрисовать её
+
+      if (timeFraction < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        if(inEnd) inEnd()
+      }
+
+    });
+  }
+
+  function linear(timeFraction) {
+    return timeFraction;
+  }
+
+  function draw(elem, progress, currentPosition, endPosition) {
+    if(endPosition === 0) {
+      elem.style.transform = `translateX(${currentPosition - progress * currentPosition}px)`
+    } else {
+      elem.style.transform = `translateX(${currentPosition + progress * (endPosition - currentPosition)}px)`
+    }
+  }
 
   //slider
   function slider(settings) {
@@ -67,68 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
       dots_ = [],
       mouseMoveFlag = false,
       moveLastCardFlag = false,
-      observerTicker;
+      auto,
+      transformValue = 0;
 
     if (window_) {
-
-      if(settings.infinite) {
-
-        const options = {
-          root: window_,
-          rootMargin: '0px',
-          threshold: 0
-        }
-
-        let callback
-
-        function startObserve(right = false) {
-
-          if (right) {
-            callback = function(entries, observer) {
-              entries.forEach(entry => {
-                // entry.time                   // a DOMHightResTimeStamp indicating when the intersection occurred.
-                // entry.rootBounds             // a DOMRectReadOnly for the intersection observer's root.
-                // entry.boundingClientRect     // a DOMRectReadOnly for the intersection observer's target.
-                // entry.intersectionRect       // a DOMRectReadOnly for the visible portion of the intersection observer's target.
-                // entry.intersectionRatio      // the number for the ratio of the intersectionRect to the boundingClientRect.
-                // entry.target                 // the Element whose intersection with the intersection root changed.
-                // entry.isIntersecting         // intersecting: true or false
-
-                if (!entry.isIntersecting && entry.boundingClientRect.left > 0) {
-                  const width = entry.target.clientWidth
-                  // transformValue -=width
-                  entry.target.remove()
-                  field_.style.transform = `translateX(-${((cards_[0].scrollWidth + betweenCards) * sliderCounter) - width}px)`;
-                  // field.style.transform = `translateX(${transformValue}px)`
-                  field_.prepend(entry.target)
-                }
-              });
-            };
-          } else {
-            callback = function(entries, observer) {
-              entries.forEach((entry, index) => {
-                console.log(entry.isIntersecting)
-                if (!entry.isIntersecting && entry.boundingClientRect.left < 0) {
-                  const width = entry.target.clientWidth
-                  // transformValue +=width
-                  entry.target.remove()
-                  // field_.style.transform = `translateX(-${((cards_[0].scrollWidth + betweenCards) * sliderCounter)}px)`;
-                  // field.style.transform = `translateX(${transformValue}px)`
-                  field_.append(entry.target)
-                }
-              });
-            };
-          }
-
-          observerTicker = new IntersectionObserver(callback, options)
-          cards_.forEach(el => {
-            observerTicker.observe(el)
-          })
-        }
-
-      }
-
-      if(settings.infinite) startObserve()
 
       function clear() {
         startPoint = null
@@ -138,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mouseMoveFlag = false
         moveLastCardFlag = false
         field_.style.transform = ''
+        transformValue = 0
         if (dotsWrap_) {
           dots_.forEach((item, index)=> {
             item.classList.remove(settings.dotActiveClass);
@@ -188,6 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return false
       }
 
+      field_.style.transition = '0s'
+
       //Общее количество слайдов
       if (progressNumAll) progressNumAll.textContent = cards_.length
 
@@ -197,32 +159,71 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Слайд следующий
-
       function slideNext(dots = false) {
         if (!checkNumCards()) {
           return
         }
-        // if(observerTicker) observerTicker.disconnect()
         if(!dots) sliderCounter++;
         if (arrowNext_) arrowNext_.classList.remove(settings.buttonActiveClass);
         if (arrowPrev_) arrowPrev_.classList.remove(settings.buttonActiveClass);
         if (sliderCounter >= cards_.length) {
-          sliderCounter = cards_.length - 1;
+          if (settings.infinite) {
+            sliderCounter = 0
+          } else {
+            sliderCounter = cards_.length - 1;
+          }
         }
         if(progressNumCurrent) progressNumCurrent.textContent =  sliderCounter + 1
-        if ((sliderCounter + 1) === cards_.length) {
+        if ((sliderCounter + 1) === cards_.length && !settings.infinite) {
           arrowNext_.classList.add(settings.buttonActiveClass);
         }
         if (progress_) progress_.style.left = (100 / cards_.length) * sliderCounter + '%'
         if (dotsWrap_) dots_.forEach(item => item.classList.remove(settings.dotActiveClass))
-        if (lastCard() && !settings.infinite) {
-          field_.style.transform = `translateX(-${field_.scrollWidth - window_.clientWidth}px)`
+        if (!settings.infinite && lastCard()) {
+          const currentTransformValue = transformValue
+          transformValue = -(field_.scrollWidth - window_.clientWidth)
+          animate({
+            timing: linear,
+            draw: draw,
+            duration: 300,
+            elem: field_,
+            currentPosition: currentTransformValue,
+            endPosition: transformValue
+          })
           sliderCounter = Math.ceil(cards_.length - numberIntegerVisibleCards() - partCard())
           if (dotsWrap_) dots_[dots_.length - 1].classList.add(settings.dotActiveClass)
           return
         }
         if (dotsWrap_) dots_[sliderCounter].classList.add(settings.dotActiveClass)
-        field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
+
+        if(settings.infinite) {
+          transformValue = -(cards_[0].scrollWidth + betweenCards)
+          animate({
+            timing: linear,
+            draw: draw,
+            duration: 300,
+            elem: field_,
+            currentPosition: 0,
+            endPosition: transformValue,
+            inEnd: function() {
+              const card = document.querySelectorAll(settings.cardSelector)[0]
+              card.remove()
+              field_.append(card)
+              field_.style.transform = ''
+            }
+          })
+          return
+        }
+        const currentTransformValue = transformValue
+        transformValue = -((cards_[0].scrollWidth + betweenCards) * sliderCounter)
+        animate({
+          timing: linear,
+          draw: draw,
+          duration: 300,
+          elem: field_,
+          currentPosition: currentTransformValue,
+          endPosition: transformValue
+        })
       }
 
       // Слайд предыдущий
@@ -231,16 +232,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!checkNumCards()) {
           return
         }
-        if(observerTicker) observerTicker.disconnect()
         sliderCounter = Math.floor(sliderCounter)
         if(!dots) sliderCounter--;
         if (arrowNext_) arrowNext_.classList.remove(settings.buttonActiveClass);
         if (arrowPrev_) arrowPrev_.classList.remove(settings.buttonActiveClass);
-        if (sliderCounter <= 0) {
-          sliderCounter = 0;
+        if (sliderCounter < 0) {
+          if(settings.infinite) {
+            sliderCounter = cards_.length - 1
+          } else {
+            sliderCounter = 0;
+          }
         }
         if(progressNumCurrent) progressNumCurrent.textContent =  sliderCounter + 1
-        if (sliderCounter === 0 && arrowPrev_) {
+        if (!settings.infinite && sliderCounter === 0 && arrowPrev_) {
           arrowPrev_.classList.add(settings.buttonActiveClass);
         }
         if (dotsWrap_) {
@@ -253,8 +257,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progress_) {
           progress_.style.left = (100 / cards_.length) * sliderCounter + '%'
         }
-        if(settings.infinite) startObserve(true)
-        field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
+        if(settings.infinite) {
+          const card = document.querySelectorAll(settings.cardSelector)[cards_.length - 1]
+          const offset = -(cards_[0].scrollWidth + betweenCards)
+          card.remove()
+          field_.prepend(card)
+          field_.style.transform = `translateX(-${offset}px)`
+          transformValue = 0
+          animate({
+            timing: linear,
+            draw: draw,
+            duration: 300,
+            elem: field_,
+            currentPosition: offset,
+            endPosition: transformValue
+          })
+          return
+        }
+
+        const currentTransformValue = transformValue
+        transformValue = -(cards_[0].scrollWidth + betweenCards) * sliderCounter
+        animate({
+          timing: linear,
+          draw: draw,
+          duration: 300,
+          elem: field_,
+          currentPosition: currentTransformValue,
+          endPosition: transformValue
+        })
       }
 
       // Рендер точек
@@ -301,12 +331,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       //Автоматическое переключение
       if(settings.auto) {
-        const auto = setInterval(slideNext, 4000)
+        auto = setInterval(slideNext, 4000)
       }
 
       // Свайп слайдов тач-событиями
 
       window_.addEventListener('touchstart', (e) => {
+        if (settings.auto) clearInterval(auto)
         if(settings.disabledPoint && document.documentElement.clientWidth > settings.disabledPoint) {
           return
         }
@@ -322,8 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (moveLastCardFlag) {
           field_.style.transform = `translateX(${swipeAction + -(field_.clientWidth - window_.clientWidth)}px)`;
         } else {
-          field_.style.transform = `translateX(${swipeAction + (-(cards_[0].scrollWidth + betweenCards) * sliderCounter)}px)`;
-
+          field_.style.transform = `translateX(${swipeAction + transformValue}px)`;
         }
       });
 
@@ -331,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(settings.disabledPoint && document.documentElement.clientWidth > settings.disabledPoint) {
           return
         }
+        transformValue += swipeAction
         moveLastCardFlag = false
         endPoint = e.changedTouches[0].pageX;
         if (Math.abs(startPoint - endPoint) > 50 && checkNumCards()) {
@@ -344,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
         }
+        if(settings.auto) auto = setInterval(slideNext, 4000)
       });
 
       // Свайп слайдов маус-событиями
@@ -428,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buttonActiveClass: 'interface__arrow--inactive',
     progressNumCurrentSelector: '.party__interface .interface__text__span--1',
     progressNumAllSelector: '.party__interface .interface__text__span--3',
-    auto: true,
+    // auto: true,
     infinite: true
     // disabledPoint: 991,
     // dotsWrapSelector: '.steps__interface .interface__dots',
