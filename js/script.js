@@ -56,7 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
       arrowPrev_ = document.querySelector(settings.buttonPrevSelector),
       arrowNext_ = document.querySelector(settings.buttonNextSelector),
       progress_ = document.querySelector(settings.progressSelector),
-      dotsWrap_ = document.querySelector(settings.dotsWrapSelector);
+      dotsWrap_ = document.querySelector(settings.dotsWrapSelector),
+      progressNumCurrent = document.querySelector(settings.progressNumCurrentSelector),
+      progressNumAll = document.querySelector(settings.progressNumAllSelector);
 
     let startPoint,
       swipeAction,
@@ -64,9 +66,69 @@ document.addEventListener('DOMContentLoaded', () => {
       sliderCounter = 0,
       dots_ = [],
       mouseMoveFlag = false,
-      moveLastCardFlag = false
+      moveLastCardFlag = false,
+      observerTicker;
 
     if (window_) {
+
+      if(settings.infinite) {
+
+        const options = {
+          root: window_,
+          rootMargin: '0px',
+          threshold: 0
+        }
+
+        let callback
+
+        function startObserve(right = false) {
+
+          if (right) {
+            callback = function(entries, observer) {
+              entries.forEach(entry => {
+                // entry.time                   // a DOMHightResTimeStamp indicating when the intersection occurred.
+                // entry.rootBounds             // a DOMRectReadOnly for the intersection observer's root.
+                // entry.boundingClientRect     // a DOMRectReadOnly for the intersection observer's target.
+                // entry.intersectionRect       // a DOMRectReadOnly for the visible portion of the intersection observer's target.
+                // entry.intersectionRatio      // the number for the ratio of the intersectionRect to the boundingClientRect.
+                // entry.target                 // the Element whose intersection with the intersection root changed.
+                // entry.isIntersecting         // intersecting: true or false
+
+                if (!entry.isIntersecting && entry.boundingClientRect.left > 0) {
+                  const width = entry.target.clientWidth
+                  // transformValue -=width
+                  entry.target.remove()
+                  field_.style.transform = `translateX(-${((cards_[0].scrollWidth + betweenCards) * sliderCounter) - width}px)`;
+                  // field.style.transform = `translateX(${transformValue}px)`
+                  field_.prepend(entry.target)
+                }
+              });
+            };
+          } else {
+            callback = function(entries, observer) {
+              entries.forEach((entry, index) => {
+                console.log(entry.isIntersecting)
+                if (!entry.isIntersecting && entry.boundingClientRect.left < 0) {
+                  const width = entry.target.clientWidth
+                  // transformValue +=width
+                  entry.target.remove()
+                  // field_.style.transform = `translateX(-${((cards_[0].scrollWidth + betweenCards) * sliderCounter)}px)`;
+                  // field.style.transform = `translateX(${transformValue}px)`
+                  field_.append(entry.target)
+                }
+              });
+            };
+          }
+
+          observerTicker = new IntersectionObserver(callback, options)
+          cards_.forEach(el => {
+            observerTicker.observe(el)
+          })
+        }
+
+      }
+
+      if(settings.infinite) startObserve()
 
       function clear() {
         startPoint = null
@@ -96,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // считаем расстояние между карточками
       // общая длина всех карточек + расстояния между ними
-      const lengthCardAndBetweenCards = cards_[cards_.length - 1].getBoundingClientRect().right - window_.getBoundingClientRect().left;
+      const lengthCardAndBetweenCards = cards_[cards_.length - 1].getBoundingClientRect().right - cards_[0].getBoundingClientRect().left;
       // расстояние между карточками
       const betweenCards = (lengthCardAndBetweenCards - (cards_[0].clientWidth * cards_.length)) / (cards_.length -1);
 
@@ -126,6 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return false
       }
 
+      //Общее количество слайдов
+      if (progressNumAll) progressNumAll.textContent = cards_.length
+
       //Устанавливаем ширину бегунка прогресс-бара
       if (progress_) {
         progress_.style.width = 100 / cards_.length + '%'
@@ -137,18 +202,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!checkNumCards()) {
           return
         }
+        // if(observerTicker) observerTicker.disconnect()
         if(!dots) sliderCounter++;
         if (arrowNext_) arrowNext_.classList.remove(settings.buttonActiveClass);
         if (arrowPrev_) arrowPrev_.classList.remove(settings.buttonActiveClass);
         if (sliderCounter >= cards_.length) {
           sliderCounter = cards_.length - 1;
         }
+        if(progressNumCurrent) progressNumCurrent.textContent =  sliderCounter + 1
         if ((sliderCounter + 1) === cards_.length) {
           arrowNext_.classList.add(settings.buttonActiveClass);
         }
         if (progress_) progress_.style.left = (100 / cards_.length) * sliderCounter + '%'
         if (dotsWrap_) dots_.forEach(item => item.classList.remove(settings.dotActiveClass))
-        if (lastCard()) {
+        if (lastCard() && !settings.infinite) {
           field_.style.transform = `translateX(-${field_.scrollWidth - window_.clientWidth}px)`
           sliderCounter = Math.ceil(cards_.length - numberIntegerVisibleCards() - partCard())
           if (dotsWrap_) dots_[dots_.length - 1].classList.add(settings.dotActiveClass)
@@ -156,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (dotsWrap_) dots_[sliderCounter].classList.add(settings.dotActiveClass)
         field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
-
       }
 
       // Слайд предыдущий
@@ -165,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!checkNumCards()) {
           return
         }
+        if(observerTicker) observerTicker.disconnect()
         sliderCounter = Math.floor(sliderCounter)
         if(!dots) sliderCounter--;
         if (arrowNext_) arrowNext_.classList.remove(settings.buttonActiveClass);
@@ -172,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sliderCounter <= 0) {
           sliderCounter = 0;
         }
+        if(progressNumCurrent) progressNumCurrent.textContent =  sliderCounter + 1
         if (sliderCounter === 0 && arrowPrev_) {
           arrowPrev_.classList.add(settings.buttonActiveClass);
         }
@@ -185,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progress_) {
           progress_.style.left = (100 / cards_.length) * sliderCounter + '%'
         }
+        if(settings.infinite) startObserve(true)
         field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
       }
 
@@ -228,6 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
         arrowNext_.addEventListener('click', () => {
           slideNext();
         });
+      }
+
+      //Автоматическое переключение
+      if(settings.auto) {
+        const auto = setInterval(slideNext, 4000)
       }
 
       // Свайп слайдов тач-событиями
@@ -352,6 +426,10 @@ document.addEventListener('DOMContentLoaded', () => {
     buttonPrevSelector: '.party__interface .interface__arrow--prev',
     buttonNextSelector: '.party__interface .interface__arrow--next',
     buttonActiveClass: 'interface__arrow--inactive',
+    progressNumCurrentSelector: '.party__interface .interface__text__span--1',
+    progressNumAllSelector: '.party__interface .interface__text__span--3',
+    auto: true,
+    infinite: true
     // disabledPoint: 991,
     // dotsWrapSelector: '.steps__interface .interface__dots',
     // dotClass: 'interface__dot',
@@ -430,9 +508,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   ticker({
-    windowSelector: '.running__window',
-    fieldSelector: '.running__field',
-    cardSelector: '.running__card',
+    windowSelector: '.running__window--1',
+    fieldSelector: '.running__field--1',
+    cardSelector: '.running__card--1',
+    speed: 0.5
+  })
+
+  ticker({
+    windowSelector: '.running__window--2',
+    fieldSelector: '.running__field--2',
+    cardSelector: '.running__card--2',
     speed: 0.5
   })
 
