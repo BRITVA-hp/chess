@@ -457,6 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (mouseMoveFlag) {
           field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
+          if(settings.auto) auto = setInterval(slideNext, 4000)
         }
         mouseMoveFlag = false
         moveLastCardFlag = false
