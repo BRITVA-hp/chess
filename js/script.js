@@ -197,19 +197,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dotsWrap_) dots_[sliderCounter].classList.add(settings.dotActiveClass)
 
         if(settings.infinite) {
+          const currentTransformValue = transformValue
           transformValue = -(cards_[0].scrollWidth + betweenCards)
           animate({
             timing: linear,
             draw: draw,
             duration: 300,
             elem: field_,
-            currentPosition: 0,
+            currentPosition: currentTransformValue,
             endPosition: transformValue,
             inEnd: function() {
               const card = document.querySelectorAll(settings.cardSelector)[0]
               card.remove()
               field_.append(card)
               field_.style.transform = ''
+              transformValue = 0
             }
           })
           return
@@ -260,16 +262,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if(settings.infinite) {
           const card = document.querySelectorAll(settings.cardSelector)[cards_.length - 1]
           const offset = -(cards_[0].scrollWidth + betweenCards)
+          const currentTransformValue = transformValue + offset
+          transformValue = 0
           card.remove()
           field_.prepend(card)
-          field_.style.transform = `translateX(-${offset}px)`
-          transformValue = 0
+          field_.style.transform = `translateX(-${currentTransformValue}px)`
           animate({
             timing: linear,
             draw: draw,
             duration: 300,
             elem: field_,
-            currentPosition: offset,
+            currentPosition: currentTransformValue,
             endPosition: transformValue
           })
           return
@@ -342,7 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
           return
         }
         startPoint = e.changedTouches[0].pageX;
-        if (lastCard() && numberIntegerVisibleCards() < cards_.length) moveLastCardFlag = true
+        if (!settings.infinite && lastCard() && numberIntegerVisibleCards() < cards_.length) moveLastCardFlag = true
+
       });
 
       window_.addEventListener('touchmove', (e) => {
@@ -350,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return
         }
         swipeAction = e.changedTouches[0].pageX - startPoint;
-        if (moveLastCardFlag) {
+        if (moveLastCardFlag && !settings.infinite) {
           field_.style.transform = `translateX(${swipeAction + -(field_.clientWidth - window_.clientWidth)}px)`;
         } else {
           field_.style.transform = `translateX(${swipeAction + transformValue}px)`;
@@ -373,20 +377,31 @@ document.addEventListener('DOMContentLoaded', () => {
             slidePrev();
           }
         } else {
-          field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
+          const currentTransformValue = transformValue
+          transformValue -= swipeAction
+          animate({
+            timing: linear,
+            draw: draw,
+            duration: 300,
+            elem: field_,
+            currentPosition: currentTransformValue,
+            endPosition: transformValue
+          })
+          // field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
         }
         if(settings.auto) auto = setInterval(slideNext, 4000)
       });
 
       // Свайп слайдов маус-событиями
       window_.addEventListener('mousedown', (e) => {
+        if (settings.auto) clearInterval(auto)
         if(settings.disabledPoint && document.documentElement.clientWidth > settings.disabledPoint) {
           return
         }
         e.preventDefault();
         startPoint = e.pageX;
         mouseMoveFlag = true;
-        if (lastCard()) moveLastCardFlag = true
+        if (!settings.infinite && lastCard()) moveLastCardFlag = true
       });
       window_.addEventListener('mousemove', (e) => {
         if(settings.disabledPoint && document.documentElement.clientWidth > settings.disabledPoint) {
@@ -395,10 +410,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mouseMoveFlag) {
           e.preventDefault();
           swipeAction = e.pageX - startPoint;
+
           if (moveLastCardFlag) {
-            field_.style.transform = `translateX(${swipeAction + -(field_.clientWidth - document.documentElement.clientWidth)}px)`;
+            field_.style.transform = `translateX(${swipeAction + -(field_.clientWidth - window_.clientWidth)}px)`;
           } else {
-            field_.style.transform = `translateX(${swipeAction + (-(cards_[0].scrollWidth + betweenCards) * sliderCounter)}px)`;
+            field_.style.transform = `translateX(${swipeAction + transformValue}px)`;
           }
         }
       });
@@ -406,6 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(settings.disabledPoint && document.documentElement.clientWidth > settings.disabledPoint) {
           return
         }
+        transformValue += swipeAction
         moveLastCardFlag = false
         mouseMoveFlag = false
         endPoint = e.pageX;
@@ -421,7 +438,16 @@ document.addEventListener('DOMContentLoaded', () => {
           return
         }
         else {
-          field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
+          const currentTransformValue = transformValue
+          transformValue -= swipeAction
+          animate({
+            timing: linear,
+            draw: draw,
+            duration: 300,
+            elem: field_,
+            currentPosition: currentTransformValue,
+            endPosition: transformValue
+          })
         }
       })
       window_.addEventListener('mouseleave', () => {
@@ -460,12 +486,8 @@ document.addEventListener('DOMContentLoaded', () => {
     buttonActiveClass: 'interface__arrow--inactive',
     progressNumCurrentSelector: '.party__interface .interface__text__span--1',
     progressNumAllSelector: '.party__interface .interface__text__span--3',
-    // auto: true,
+    auto: true,
     infinite: true
-    // disabledPoint: 991,
-    // dotsWrapSelector: '.steps__interface .interface__dots',
-    // dotClass: 'interface__dot',
-    // dotActiveClass: 'interface__dot--active'
   });
 
   // ticker
