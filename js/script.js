@@ -322,13 +322,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // Переключение на стрелки
       if (arrowPrev_) {
         arrowPrev_.addEventListener('click', () => {
+          if (settings.auto) clearInterval(auto)
           slidePrev();
+          if(settings.auto) auto = setInterval(slideNext, 4000)
         });
       }
 
       if (arrowNext_) {
         arrowNext_.addEventListener('click', () => {
+          if (settings.auto) clearInterval(auto)
           slideNext();
+          if(settings.auto) auto = setInterval(slideNext, 4000)
         });
       }
 
