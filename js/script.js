@@ -449,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             endPosition: transformValue
           })
         }
+        if(settings.auto) auto = setInterval(slideNext, 4000)
       })
       window_.addEventListener('mouseleave', () => {
         if(settings.disabledPoint && document.documentElement.clientWidth > settings.disabledPoint) {
