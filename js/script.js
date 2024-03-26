@@ -456,7 +456,16 @@ document.addEventListener('DOMContentLoaded', () => {
           return
         }
         if (mouseMoveFlag) {
-          field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
+          const currentTransformValue = transformValue + swipeAction
+          animate({
+            timing: linear,
+            draw: draw,
+            duration: 300,
+            elem: field_,
+            currentPosition: currentTransformValue,
+            endPosition: transformValue
+          })
+          // field_.style.transform = `translateX(-${(cards_[0].scrollWidth + betweenCards) * sliderCounter}px)`;
           if(settings.auto) auto = setInterval(slideNext, 4000)
         }
         mouseMoveFlag = false
